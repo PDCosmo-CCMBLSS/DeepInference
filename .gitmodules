@@ -1,0 +1,3 @@
+[submodule "src/deepinference/CLR"]
+	path = src/deepinference/CLR
+	url = git@github.com:bckenstler/CLR.git
