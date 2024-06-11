@@ -25,8 +25,22 @@ from .CLR import CyclicLR
 # when using this Python module as a library.
 
 class Model(_Model):
-    """basic wrapper of the model
-    overwrite fit so that the training and validation dataset do not need to be specified
+    """Model wrapper
+
+    Basic wrapper of Model. Overwrites fit so that the training and validation dataset do not need to be
+    specified each time.
+
+    Attributes
+    ----------
+    training_set_properties : ndarray
+        Features of the training set samples
+    training_set_labels : ndarray
+        Labels of the training set samples
+    validation_set_properties : ndarray
+        Features of the validation set samples
+    validation_set_labels : ndarray
+        Labels of the validation set samples
+
     """   
     def __init__(self,
                  inputs, outputs, 
@@ -55,7 +69,23 @@ class Model(_Model):
         )
 
 class ModelBuilder:
-    """TODO: add description
+    """Builds models that apply to a specific dataset.
+
+    Builds a multilayer perceptron with different outputs: a single set of parameters to be used in a standard
+    regression network, or multiple sets with different activation functions to be used as mixed density
+    network or as moment network.
+
+    Attributes
+    ----------
+    training_set_properties : ndarray
+        Features of the training set samples.
+    training_set_labels : ndarray
+        Labels of the training set samples.
+    validation_set_properties : ndarray
+        Features of the validation set samples.
+    validation_set_labels : ndarray
+        Labels of the validation set samples.
+
     """
     
     def __init__(
@@ -141,21 +171,26 @@ class ModelBuilder:
             loss=_tf.losses.MeanSquaredError(),
             **kwargs
     ):
-        """define and compile a fully connected NN.
+        """Defines and compiles a multilayer perceptron for regression problems.
 
-        Keyword arguments:
-        nodes_hidden_layers -- list of number of nodes. List lenght determines
-                               the number of hidden layers
-        nodes_output -- the number of output nodes
-        reg_L2_weight -- value of all L2 regularization weights
-        dropout_rate -- value of all dropout rates
-        hidden_layer_activation
-        output_layer_activation
-        initializer
-        Adam_learning_rate
-        loss -- loss function
-        """
+        Parameters
+        ----------
+        target_variable_number : int
+            Number of target variables to fit.
+        output_layer_activation : str
+            Tag of the activation function to be used in the output layer.
+        initializer : str
+            Tag of the initializer to be used in all layers.
+        loss : loss
+            Loss of choice.
+        **kwargs
+            Arbitrary keyword arguments.
         
+        Returns
+        -------
+        Model
+
+        """
         output_layer_func = _layers.Dense(
             target_variable_number,
             activation=output_layer_activation, # Notice no regularization
@@ -182,21 +217,36 @@ class ModelBuilder:
             loss=losses.mse_means_and_sigmas_uncorrelated,
             **kwargs
     ):
-        """define and compile a Mixture density NN.
+        
+        """Defines and compiles a multilayer perceptron to be used as mixed density or moment network.
 
-        Keyword arguments:
-        nodes_hidden_layers -- list of number of nodes. List lenght determines
-                               the number of hidden layers
-        output_components -- the number of components in the mixture
-        reg_L2_weight -- value of all L2 regularization weights
-        dropout_rate -- value of all dropout rates
-        hidden_layer_activation
-        output_layer_activation
-        initializer
-        Adam_learning_rate
-        loss -- loss function
+        Parameters
+        ----------
+        output_components : int
+            Number of components used to approximate the posterior.
+        target_variable_number : int
+            Number of target variables to fit.
+        has_correlations : bool
+            Flag to select if the target variables correletions have to be modelled rather than fit separately
+            the marginalized posterior of each parameter.
+        has_initializer_v2 : bool
+            Flag to switch between two initializer, built for debug. [TODO] Can be removed.
+        output_mean_activation : str
+            Tag of the activation function to be used in the output layer.
+        initializer : str
+            Tag of the initializer to be used in all layers.
+        sigma_norms : float or array
+            Factors to normalize the standard deviations with the respect to the means.
+        loss : loss
+            Loss of choice.
+        **kwargs
+            Arbitrary keyword arguments.
+        
+        Returns
+        -------
+        Model
+        
         """
-
         def output_layer_func(inputs):
             
             means = _layers.Dense(output_components*target_variable_number,
@@ -262,16 +312,45 @@ def hypermodel_DO_WD_NodesLayers_LR(
     LR_min=1.e-5, LR_max=1.e-2,
     **kwargs,
 ):
+    """Returns a subclass of HyperModel
+
+    Returns a subclass of HyperModel, which tunes the dropout rate, the weight decay rate, the number of nodes
+    and layers, and the learning rate.
+
+    Parameters
+    ----------
+    NN : :obj: ModelBuilder
+        Builder to whom the work is outsourced
+    DO_min : float
+    DO_max : float
+        Range of the search for the best weight dropout rate value.
+    WD_min : float
+    WD_max : float
+        Range of the logarithmic search for the best weight decay rate value.
+    N_nodes_min : int
+    N_nodes_max : int
+        Range of the search for the best number of nodes.
+    N_layers_min : int
+    N_layers_max : int
+        Range of the search for the best number of layers.
+    LR_min : float
+    LR_max : float
+        Range of the logarithmic search for the best base learning rate value to be used in the cyclical
+        learning rate schedule.
+    
+    Returns
+    -------
+    MyHyperModel
+
+    """
     class MyHyperModel(_kt.HyperModel):
         def build(self, hp):
-            # Tune floats
             hp_dropout_rate = hp.Float('dropout_rate', DO_min, DO_max)
             hp_reg_WD_weight = hp.Float(
                 'reg_WD_rate', 
                 min_value=WD_min, max_value=WD_max, 
                 sampling="log"
             )
-            # Tune from list
 
             #hp_architecture_index = hp.Choice('architecture_index' , range(len(architectures)))
             N_layers = hp.Int('N_layers', min_value=N_layers_min, max_value=N_layers_max)

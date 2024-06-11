@@ -11,12 +11,19 @@ def check_predictions(
     title=None,
     color_error_dependence=None,
 ):
-    """creates a plot to compare true and predicted values
+    """Creates plots to compare true and predicted values.
+
+    Creates a figure with three panels: predicted vs true parameter values, predicted errors vs true parameter
+    values, and bias of the predictions vs true parameter values.
     
-    Arguments:
+    Parameters
+    ----------
     trueY : ndarray
+        True labels values, has the same length as predicY and predicE
     predicY : ndarray
+        Predicted mean of the label posterior.
     predicE : ndarray
+        Predicted standard deviation of the label posterior.
     label : string
         xlabel and ylabel are set to "True "/"Predicted "+label
     title : string or None
@@ -26,6 +33,7 @@ def check_predictions(
         Omega_m is hardcoded) correlated with the error.
         If None, the default color is used.
         [TODO remove hardcoded assumptions]
+
     """
     fig, ax = plt.subplots(ncols=3,sharex=True,figsize=(9,2.8), dpi=200)#6.4,2.8 #6.4,4.8
 
