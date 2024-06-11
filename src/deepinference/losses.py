@@ -1,6 +1,26 @@
 import tensorflow as _tf
 
 def mse_means_and_sigmas_uncorrelated(y_true, y_pred):
+    """Mean squared error for a moment network.
+
+    Mean squared error for the means and standard deviations according to the moment network prescription.
+    The mse's of mean and sigma for each target parameter are averaged, according to eq. (26) of ([2109.10915])[https://arxiv.org/abs/2109.10915].
+
+    Parameters
+    ----------
+    y_true : tensor
+        True value of the target parameters.
+    y_pred : tensor
+        Tensor with same shape[0] as y_true, and twice the shape[1] of y_true.
+        The first half of the parameters along the second axis are the predicted means of the posterior,
+        while the latter half are the predicted standard deviations.
+
+    Returns
+    -------
+    float
+        Loss
+
+    """
     means_pred, sigmas_pred = _tf.split(y_pred, num_or_size_splits=2, axis=1)
     
     y_true = _tf.cast(y_true, dtype=y_pred.dtype)
