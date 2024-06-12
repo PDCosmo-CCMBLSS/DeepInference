@@ -303,46 +303,7 @@ class ModelBuilder:
         )
 
 
-def hypermodel_DO_WD_NodesLayers_LR(
-    NN,
-    DO_min=0.3, DO_max=0.7,
-    WD_min=1.e-5, WD_max=1.e-3,
-    N_nodes_min=8, N_nodes_max=2048,
-    N_layers_min=1, N_layers_max=8,
-    LR_min=1.e-5, LR_max=1.e-2,
-    **kwargs,
-):
-    """Returns a subclass of HyperModel
 
-    Returns a subclass of HyperModel, which tunes the dropout rate, the weight decay rate, the number of nodes
-    and layers, and the learning rate.
-
-    Parameters
-    ----------
-    NN : :obj: ModelBuilder
-        Builder to whom the work is outsourced
-    DO_min : float
-    DO_max : float
-        Range of the search for the best weight dropout rate value.
-    WD_min : float
-    WD_max : float
-        Range of the logarithmic search for the best weight decay rate value.
-    N_nodes_min : int
-    N_nodes_max : int
-        Range of the search for the best number of nodes.
-    N_layers_min : int
-    N_layers_max : int
-        Range of the search for the best number of layers.
-    LR_min : float
-    LR_max : float
-        Range of the logarithmic search for the best base learning rate value to be used in the cyclical
-        learning rate schedule.
-    
-    Returns
-    -------
-    MyHyperModel
-
-    """
 class hypermodel_DO_WD_NodesLayers_LR(_kt.HyperModel):
     """Subclass of hypermodel.
 
@@ -419,6 +380,7 @@ class hypermodel_DO_WD_NodesLayers_LR(_kt.HyperModel):
         )
 
         return model
+    
 
     def fit(self, hp, model, *args, callbacks=[], **kwargs):
         hp_base_learning_rate = hp.Float(
