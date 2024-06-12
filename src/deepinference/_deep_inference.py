@@ -343,48 +343,103 @@ def hypermodel_DO_WD_NodesLayers_LR(
     MyHyperModel
 
     """
-    class MyHyperModel(_kt.HyperModel):
-        def build(self, hp):
-            hp_dropout_rate = hp.Float('dropout_rate', DO_min, DO_max)
-            hp_reg_WD_weight = hp.Float(
-                'reg_WD_rate', 
-                min_value=WD_min, max_value=WD_max, 
-                sampling="log"
-            )
+class hypermodel_DO_WD_NodesLayers_LR(_kt.HyperModel):
+    """Subclass of hypermodel.
 
-            #hp_architecture_index = hp.Choice('architecture_index' , range(len(architectures)))
-            N_layers = hp.Int('N_layers', min_value=N_layers_min, max_value=N_layers_max)
-            N_nodes = hp.Int('N_nodes', min_value=N_nodes_min, max_value=N_nodes_max)
-            
-            hp_architecture=[]
-            for i in range(N_layers):
-                hp_architecture.append(N_nodes)
+    Subclass of HyperModel, which tunes the dropout rate, the weight decay rate, the number of nodes
+    and layers, and the learning rate.
 
-            model = NN.build_MDN(
-                nodes_hidden_layers=hp_architecture,
-                reg_WD_rate=hp_reg_WD_weight,
-                dropout_rate=hp_dropout_rate,
+    Attributes
+    ----------
+    NN : :obj: ModelBuilder
+        Builder to whom the work is outsourced
+    DO_min : float
+    DO_max : float
+        Range of the search for the best weight dropout rate value.
+    WD_min : float
+    WD_max : float
+        Range of the logarithmic search for the best weight decay rate value.
+    N_nodes_min : int
+    N_nodes_max : int
+        Range of the search for the best number of nodes.
+    N_layers_min : int
+    N_layers_max : int
+        Range of the search for the best number of layers.
+    LR_min : float
+    LR_max : float
+        Range of the logarithmic search for the best base learning rate value to be used in the cyclical
+        learning rate schedule.
+    
+    """
+    def __init__(
+            self,
+            NN,
+            DO_min=0.3, DO_max=0.7,
+            WD_min=1.e-5, WD_max=1.e-3,
+            N_nodes_min=8, N_nodes_max=2048,
+            N_layers_min=1, N_layers_max=8,
+            LR_min=1.e-5, LR_max=1.e-2,
+            **kwargs,
+    ):
+        self.NN = NN
+        self.DO_min = DO_min
+        self.DO_max = DO_max
+        self.WD_min = WD_min
+        self.WD_max = WD_max
+        self.N_nodes_min = N_nodes_min
+        self.N_nodes_max = N_nodes_max
+        self.N_layers_min = N_layers_min
+        self.N_layers_max = N_layers_max
+        self.LR_min = LR_min
+        self.LR_max = LR_max
+        self.kwargs = kwargs
+
+
+    def build(self, hp):
+        hp_dropout_rate = hp.Float('dropout_rate', self.DO_min, self.DO_max)
+        hp_reg_WD_weight = hp.Float(
+            'reg_WD_rate', 
+            min_value=self.WD_min, max_value=self.WD_max, 
+            sampling="log"
+        )
+
+        #hp_architecture_index = hp.Choice('architecture_index' , range(len(architectures)))
+        N_layers = hp.Int('N_layers', min_value=self.N_layers_min, max_value=self.N_layers_max)
+        N_nodes = hp.Int('N_nodes', min_value=self.N_nodes_min, max_value=self.N_nodes_max)
+        
+        hp_architecture=[]
+        for i in range(N_layers):
+            hp_architecture.append(N_nodes)
+
+        model = self.NN.build_MDN(
+            nodes_hidden_layers=hp_architecture,
+            reg_WD_rate=hp_reg_WD_weight,
+            dropout_rate=hp_dropout_rate,
+            **self.kwargs
+        )
+
+        return model
+
+    def fit(self, hp, model, *args, callbacks=[], **kwargs):
+        hp_base_learning_rate = hp.Float(
+            'base_learning_rate', 
+            min_value=self.LR_min, 
+            max_value=self.LR_max, 
+            sampling="log"
+        )
+
+        clr_triangular = CyclicLR(#mode='exp_range',
+            base_lr=hp_base_learning_rate,
+            max_lr=hp_base_learning_rate*4.,
+            step_size=3*4, # recommended (2-8) x (training iterations in epoch)
+            gamma=0.99994
+        )
+
+        return  model.fit(
+            *args,
+            callbacks=callbacks+[clr_triangular],
                 **kwargs
-            )
-
-            return model
-
-        def fit(self, hp, model, *args, callbacks=[], **kwargs):
-            hp_base_learning_rate = hp.Float('base_learning_rate', min_value=LR_min, max_value=LR_max, sampling="log")
-
-            clr_triangular = CyclicLR(#mode='exp_range',
-                base_lr=hp_base_learning_rate,
-                max_lr=hp_base_learning_rate*4.,
-                step_size=3*4, # recommended (2-8) x (training iterations in epoch)
-                gamma=0.99994
-            )
-
-            return  model.fit(
-                *args,
-                callbacks=callbacks+[clr_triangular],
-                 **kwargs
-            )
-    return MyHyperModel()
+        )
 
 # ---- CLI ----
 # The functions defined in this section are wrappers around the main Python
